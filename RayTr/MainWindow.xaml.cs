@@ -23,15 +23,12 @@ namespace RayTr
         {
             try
             {
-                // Параметры изображения
                 int width = 640;
                 int height = 480;
 
-                // Создаем bitmap для рендеринга
                 currentBitmap = new WriteableBitmap(
                     width, height, 96, 96, PixelFormats.Bgr32, null);
 
-                // Читаем параметры сферы 1 из интерфейса
                 Vector3 sphere1Center = new Vector3(
                     ParseDouble(Sphere1X.Text),
                     ParseDouble(Sphere1Y.Text),
@@ -44,7 +41,6 @@ namespace RayTr
                     ParseDouble(Sphere1B.Text)
                 );
 
-                // Читаем параметры сферы 2 из интерфейса
                 Vector3 sphere2Center = new Vector3(
                     ParseDouble(Sphere2X.Text),
                     ParseDouble(Sphere2Y.Text),
@@ -57,41 +53,34 @@ namespace RayTr
                     ParseDouble(Sphere2B.Text)
                 );
 
-                // Создаем сферы
                 List<Sphere> spheres = new List<Sphere>
                 {
                     new Sphere(sphere1Center, sphere1Radius, sphere1Color),
                     new Sphere(sphere2Center, sphere2Radius, sphere2Color)
                 };
 
-                // Читаем параметры источника света из интерфейса
                 Vector3 lightPosition = new Vector3(
                     ParseDouble(LightX.Text),
                     ParseDouble(LightY.Text),
                     ParseDouble(LightZ.Text)
                 );
 
-                // Создаем источник света
                 LightSource light = new LightSource(lightPosition, ColorRGB.White);
 
-                // Читаем параметры камеры из интерфейса
                 Vector3 cameraPosition = new Vector3(
                     ParseDouble(CameraX.Text),
                     ParseDouble(CameraY.Text),
                     ParseDouble(CameraZ.Text)
                 );
 
-                // Создаем простую камеру
                 SimpleCamera camera = new SimpleCamera(
-                    cameraPosition,    // Позиция камеры (из интерфейса)
-                    width, height,     // Разрешение
-                    60.0               // Угол обзора
+                    cameraPosition,
+                    width, height,
+                    60.0
                 );
 
-                // Рендерим сцену
                 RenderScene(currentBitmap, camera, spheres, light);
 
-                // Отображаем результат
                 RenderImage.Source = currentBitmap;
             }
             catch (Exception ex)
@@ -119,11 +108,9 @@ namespace RayTr
 
                 if (saveDialog.ShowDialog() == true)
                 {
-                    // Создаем encoder для PNG
                     PngBitmapEncoder encoder = new PngBitmapEncoder();
                     encoder.Frames.Add(BitmapFrame.Create(currentBitmap));
 
-                    // Сохраняем в файл
                     using (FileStream stream = new FileStream(saveDialog.FileName, FileMode.Create))
                     {
                         encoder.Save(stream);
@@ -154,20 +141,16 @@ namespace RayTr
             int width = bitmap.PixelWidth;
             int height = bitmap.PixelHeight;
 
-            // Создаем массив пикселей (буфер вывода)
             byte[] pixelData = new byte[width * height * 4];
 
             int pixelIndex = 0;
 
-            // Проходим по всем пикселям
             for (int y = 0; y < height; y++)
             {
                 for (int x = 0; x < width; x++)
                 {
-                    // Генерируем луч для текущего пикселя
                     Ray ray = camera.GenerateRay(x, y);
 
-                    // Ищем ближайшее пересечение с любой сферой
                     (bool intersects, double distance, Vector3 normal, Sphere sphere) =
                         FindClosestIntersection(ray, spheres);
 
@@ -175,53 +158,42 @@ namespace RayTr
 
                     if (intersects)
                     {
-                        // Вычисляем точку пересечения
                         Vector3 intersectionPoint = ray.PointAt(distance);
 
-                        // Проверяем, находится ли точка в тени
                         bool inShadow = IsPointInShadow(intersectionPoint, normal, light, spheres, sphere);
 
                         if (inShadow)
                         {
-                            // Точка в тени - ЧЕРНЫЙ ЦВЕТ
                             pixelColor = ColorRGB.Black;
                         }
                         else
                         {
-                            // Вычисляем направление к источнику света
                             Vector3 lightDirection = (light.Position - intersectionPoint).Normalized();
 
-                            // Вычисляем косинус угла между нормалью и направлением к свету
                             double cosTheta = Vector3.Dot(normal, lightDirection);
 
-                            // Ограничиваем значение от 0 до 1
                             double intensity = Math.Max(0.0, cosTheta);
 
-                            // Применяем модель освещения Ламберта
                             pixelColor = sphere.Color * light.Color * intensity;
                         }
                     }
                     else
                     {
-                        // Если нет пересечения - синий фон
                         pixelColor = new ColorRGB(0.2, 0.2, 0.8);
                     }
 
-                    // Записываем цвет пикселя в буфер вывода (формат Bgr32)
-                    pixelData[pixelIndex] = (byte)(pixelColor.B * 255);     // Blue
-                    pixelData[pixelIndex + 1] = (byte)(pixelColor.G * 255); // Green
-                    pixelData[pixelIndex + 2] = (byte)(pixelColor.R * 255); // Red
-                    pixelData[pixelIndex + 3] = 0;                          // Alpha (не используется)
+                    pixelData[pixelIndex] = (byte)(pixelColor.B * 255);
+                    pixelData[pixelIndex + 1] = (byte)(pixelColor.G * 255);
+                    pixelData[pixelIndex + 2] = (byte)(pixelColor.R * 255);
+                    pixelData[pixelIndex + 3] = 0;
 
                     pixelIndex += 4;
                 }
             }
 
-            // Копируем буфер вывода в bitmap
             bitmap.WritePixels(new Int32Rect(0, 0, width, height), pixelData, width * 4, 0);
         }
 
-        // Метод для поиска ближайшего пересечения луча со сферами
         private (bool intersects, double distance, Vector3 normal, Sphere sphere)
             FindClosestIntersection(Ray ray, List<Sphere> spheres)
         {
@@ -245,27 +217,21 @@ namespace RayTr
             return (intersects, closestDistance, closestNormal, closestSphere);
         }
 
-        // Метод для проверки, находится ли точка в тени
         private bool IsPointInShadow(Vector3 point, Vector3 normal, LightSource light, List<Sphere> spheres, Sphere currentSphere)
         {
-            // Вычисляем направление к источнику света
             Vector3 lightDirection = (light.Position - point).Normalized();
 
-            // Смещаем точку немного по нормали, чтобы избежать самопересечения
             Vector3 shadowRayOrigin = point + normal * 0.001;
 
-            // Создаем теневой луч
             Ray shadowRay = new Ray(shadowRayOrigin, lightDirection);
 
-            // Проверяем пересечение теневого луча со всеми сферами, кроме текущей
             foreach (Sphere sphere in spheres)
             {
-                if (sphere == currentSphere) continue; // Пропускаем текущую сферу
+                if (sphere == currentSphere) continue;
 
                 var intersection = sphere.Intersect(shadowRay);
                 if (intersection.intersects)
                 {
-                    // Если есть пересечение с другой сферой - точка в тени
                     return true;
                 }
             }
